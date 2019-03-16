@@ -75,15 +75,20 @@ void Widget::timeoutTimerHandler()
     if (portList != bufPortList)
     {
         portList = bufPortList;
+        //qDebug() << "port list: " << portList << "\tport: " << port;
+        if(!portList.contains(port)) {
+            //qDebug() << "disconnect";
+            disconnectPort();
+        }
         ui->Port_comboBox->clear();
-        ui->Port_comboBox->addItems(portList);
+        ui->Port_comboBox->addItems(portList);       
     }
 }
 
 void Widget::on_BaudRate_comboBox_currentIndexChanged(const QString &arg1)
 {
     if (arg1.isEmpty()){
-        qDebug() << "Incorrect baud rate";
+        //qDebug() << "Incorrect baud rate";
         return;
     }
     baudRate = baudRateMap[arg1];
@@ -93,29 +98,40 @@ void Widget::on_BaudRate_comboBox_currentIndexChanged(const QString &arg1)
 void Widget::on_Port_comboBox_currentIndexChanged(const QString &arg1)
 {
     if (arg1.isEmpty()){
-        qDebug() << "Incorrect port";
+        //qDebug() << "Incorrect port";
         return;
     }
     port = arg1;
     qDebug() << "Port: " << port;
 }
 
+void Widget::connectPort()
+{
+    ui->Port_pushButton->setText(portButtonTextOff);
+    pCOMCore->initialization(port, baudRate);
+    pCOMCore->open(QIODevice::ReadOnly);
+}
+
+void Widget::disconnectPort()
+{
+    ui->Port_pushButton->setText(portButtonTextOn);
+    pCOMCore->close();
+}
+
 void Widget::on_Port_pushButton_clicked()
 {
     if (ui->Port_pushButton->isChecked())
     {
-        ui->Port_pushButton->setText(portButtonTextOff);
-        pCOMCore->initialization(port, baudRate);
-        pCOMCore->open(QIODevice::ReadOnly);
+        connectPort();
     } else {
-        ui->Port_pushButton->setText(portButtonTextOn);
-        pCOMCore->close();
+        disconnectPort();
     }
 }
 
 void Widget::readyRead(QByteArray &data)
 {
     qDebug() << data;
+    RAWdataOut(data);
 
     int position = -1;
     for (int i = 0; i < data.length(); i++)
@@ -128,22 +144,46 @@ void Widget::readyRead(QByteArray &data)
     }
     if (position > 0)
     {
-        x = data.mid(position, sizeFloat).toFloat();
+        x = byteArrayToFloat(data.mid(position, sizeFloat));
         position += sizeFloat;
-        y = data.mid(position, sizeFloat).toFloat();
+        y = byteArrayToFloat(data.mid(position, sizeFloat));
         position += sizeFloat;
-        z = data.mid(position, sizeFloat).toFloat();
+        z = byteArrayToFloat(data.mid(position, sizeFloat));
         position += sizeFloat;
-        w = data.mid(position, sizeFloat).toFloat();
+        w = byteArrayToFloat(data.mid(position, sizeFloat));
         updateText();
     }
 }
 
-void Widget::updateText()
+float Widget::byteArrayToFloat(const QByteArray &array)
 {
-   ui->RX_plainTextEdit->appendPlainText("x = " + QString::number(double(x), 'f', 5));
-   ui->RX_plainTextEdit->appendPlainText("y = " + QString::number(double(y), 'f', 5));
-   ui->RX_plainTextEdit->appendPlainText("z = " + QString::number(double(z), 'f', 5));
-   ui->RX_plainTextEdit->appendPlainText("w = " + QString::number(double(w), 'f', 5));
+    for (int i = 0; i < sizeFloat; i++){
+            converter._char[i] = array.at(i);
+    }
+
+    return converter._float;
 }
 
+void Widget::updateText()
+{
+    ui->RX_plainTextEdit->clear();
+    ui->RX_plainTextEdit->appendPlainText("x = " + QString::number(double(x), 'f', 5));
+    ui->RX_plainTextEdit->appendPlainText("y = " + QString::number(double(y), 'f', 5));
+    ui->RX_plainTextEdit->appendPlainText("z = " + QString::number(double(z), 'f', 5));
+    ui->RX_plainTextEdit->appendPlainText("w = " + QString::number(double(w), 'f', 5));
+}
+
+void Widget::RAWdataOut(const QByteArray &data, const int str_length)
+{
+    QString str;
+    for (int i = 0; i < data.length(); i++){
+        if ((i % str_length == 0) && (i != 0))
+        {
+            qDebug() << str;
+            str.clear();
+        }
+        str.push_back(QString("%1 ").arg(quint8(data.at(i)), 2, 16, QChar('0')));
+    }
+    if (!str.isEmpty())
+        qDebug() << str;
+}

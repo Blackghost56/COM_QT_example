@@ -35,7 +35,17 @@ private:
 
 
     void buildBaudRateMap();
+    void connectPort();
+    void disconnectPort();
+    float byteArrayToFloat(const QByteArray &array);
     void updateText();
+    void RAWdataOut(const QByteArray &data, const int str_length = 50);
+
+    union
+    {
+        float _float;
+        char _char[sizeof(float)];
+    } converter;
 
 public:
     explicit Widget(QWidget *parent = nullptr);
