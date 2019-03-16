@@ -115,6 +115,7 @@ void Widget::connectPort()
 void Widget::disconnectPort()
 {
     ui->Port_pushButton->setText(portButtonTextOn);
+    ui->Port_pushButton->setChecked(false);
     pCOMCore->close();
 }
 
