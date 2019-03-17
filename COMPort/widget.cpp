@@ -143,7 +143,7 @@ void Widget::readyRead(QByteArray &data)
             break;
         }
     }
-    if (position > 0)
+    if ((position > 0) && ((data.length() - position) >= (sizeFloat * 4)))
     {
         x = byteArrayToFloat(data.mid(position, sizeFloat));
         position += sizeFloat;
